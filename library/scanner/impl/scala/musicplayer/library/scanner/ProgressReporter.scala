@@ -1,9 +1,11 @@
 package musicplayer.library.scanner
 
-import musicplayer.library.model.Track
+import java.nio.file.Path
+
+import musicplayer.library.model.metadata.TrackMetadata
 
 trait ProgressReporter[F[_]] {
 
-  def nextTrack(track: Track): F[Unit]
+  def nextTrack(path: Path, trackMetadata: Option[TrackMetadata]): F[Unit]
 
 }

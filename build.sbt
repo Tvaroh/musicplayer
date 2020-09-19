@@ -22,7 +22,8 @@ val libraryModel =
     .settings(
       name := "library-model",
       libraryDependencies ++= Seq(
-        Deps.TaggedTypes
+        Deps.TaggedTypes,
+        Deps.Cats.Core
       )
     )
 val libraryScannerApi =

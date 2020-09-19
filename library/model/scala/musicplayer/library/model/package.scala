@@ -13,8 +13,8 @@ package object model {
   object AlbumYear extends TaggedType[Int]
   type AlbumYear = AlbumYear.Type
 
-  object TrackName extends TaggedType[String]
-  type TrackName = TrackName.Type
+  object TrackTitle extends TaggedType[String]
+  type TrackTitle = TrackTitle.Type
 
   object TrackNumber extends TaggedType[Int]
   type TrackNumber = TrackNumber.Type

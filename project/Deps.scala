@@ -8,6 +8,19 @@ object Deps {
 
   }
 
+  val TaggedTypes = "io.treev" %% "tagged-types" % "3.4"
+
+  object Cats extends Dep("2.2.0") {
+
+    val Core = module("org.typelevel", "cats-core")
+    val Effect = module("org.typelevel", "cats-effect")
+
+  }
+
+  val FS2IO = "co.fs2" %% "fs2-io" % "2.4.4"
+
+  val Vlcj = "uk.co.caprica" % "vlcj" % "4.6.0"
+
   abstract class Dep(val version: String) {
 
     protected def module(organization: String,

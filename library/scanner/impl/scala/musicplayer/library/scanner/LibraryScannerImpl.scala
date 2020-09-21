@@ -9,7 +9,7 @@ import musicplayer.library.model.{Library, MediaFormat}
 import musicplayer.library.scanner.config.LibraryScannerConfig
 
 class LibraryScannerImpl[F[_]](config: LibraryScannerConfig)
-                              (metadataReaders: Map[MediaFormat, MetadataReader[F]],
+                              (metadataReader: MetadataReader[F],
                                progressReporter: ProgressReporter[F])
                               (implicit F: Concurrent[F],
                                         blocker: Blocker,
@@ -28,8 +28,8 @@ class LibraryScannerImpl[F[_]](config: LibraryScannerConfig)
       }
       .mapAsync(1) { filePath =>
         MediaFormat.fromFilename(filePath.getFileName.toString)
-          .flatMap(metadataReaders.get)
-          .traverse(_.readMetadata(filePath).tupleLeft(filePath))
+          .filter(config.supportedFormats.contains)
+          .traverse(_ => metadataReader.readMetadata(filePath).tupleLeft(filePath))
           .flatTap(_.traverse((progressReporter.nextTrack _).tupled))
       }
       .flattenOption

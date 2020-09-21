@@ -45,3 +45,14 @@ val libraryScannerImpl =
       )
     )
     .dependsOn(libraryScannerApi, utilEffect)
+
+val app =
+  project.in(file("app"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "app",
+      libraryDependencies ++= Seq(
+        Deps.MonixEval
+      )
+    )
+    .dependsOn(libraryScannerImpl)

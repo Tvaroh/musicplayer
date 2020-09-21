@@ -19,8 +19,10 @@ object Deps {
 
   val FS2IO = "co.fs2" %% "fs2-io" % "2.4.4"
 
-  val VlcjInfo = "uk.co.caprica" % "vlcj-info" % "1.0.3"
+  val VlcjInfo = "uk.co.caprica" % "vlcj-info" % "2.0.0"
   val Vlcj = "uk.co.caprica" % "vlcj" % "4.6.0"
+
+  val MonixEval = "io.monix" %% "monix-eval" % "3.2.2"
 
   abstract class Dep(val version: String) {
 

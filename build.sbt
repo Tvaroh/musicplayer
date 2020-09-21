@@ -26,25 +26,49 @@ val libraryModel =
         Deps.Cats.Core
       )
     )
-val libraryScannerApi =
-  project.in(file("library/scanner/api"))
+val libraryApi =
+  project.in(file("library/api"))
     .settings(Settings.sharedSettings)
     .settings(
-      name := "library-scanner-api"
+      name := "library-api"
     )
     .dependsOn(libraryModel)
-val libraryScannerImpl =
-  project.in(file("library/scanner/impl"))
+val libraryImpl =
+  project.in(file("library/impl"))
     .settings(Settings.sharedSettings)
     .settings(
-      name := "library-scanner-impl",
+      name := "library-impl",
       libraryDependencies ++= Seq(
-        Deps.Cats.Effect,
         Deps.FS2IO,
         Deps.VlcjInfo
       )
     )
-    .dependsOn(libraryScannerApi, utilEffect)
+    .dependsOn(libraryApi, utilEffect)
+
+val playerModel =
+  project.in(file("player/model"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "player-model"
+    )
+    .dependsOn(libraryModel)
+val playerApi =
+  project.in(file("player/api"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "player-api"
+    )
+    .dependsOn(playerModel)
+val playerImpl =
+  project.in(file("player/impl"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "player-impl",
+      libraryDependencies ++= Seq(
+        Deps.Vlcj
+      )
+    )
+    .dependsOn(playerApi, libraryApi, utilEffect)
 
 val app =
   project.in(file("app"))
@@ -55,4 +79,4 @@ val app =
         Deps.MonixEval
       )
     )
-    .dependsOn(libraryScannerImpl)
+    .dependsOn(libraryImpl, playerImpl)

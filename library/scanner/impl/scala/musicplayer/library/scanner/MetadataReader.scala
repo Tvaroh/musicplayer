@@ -2,12 +2,14 @@ package musicplayer.library.scanner
 
 import java.nio.file.Path
 
-import cats.effect.{Async, Blocker, ContextShift}
-import musicplayer.library.model.metadata.TrackMetadata
+import cats.effect.{Blocker, ContextShift, Sync}
 import musicplayer.library.model._
+import musicplayer.library.model.metadata.TrackMetadata
 import taggedtypes._
-import uk.co.caprica.vlcj.factory.MediaApi
-import uk.co.caprica.vlcj.media._
+import uk.co.caprica.vlcjinfo.{MediaInfo, MediaInfoParseException}
+
+import scala.util.control.Exception
+import scala.util.control.Exception.catching
 
 trait MetadataReader[F[_]] {
 
@@ -15,8 +17,7 @@ trait MetadataReader[F[_]] {
 
 }
 
-class MetadataReaderImpl[F[_]](mediaApi: MediaApi)
-                              (implicit F: Async[F],
+class MetadataReaderImpl[F[_]](implicit F: Sync[F],
                                         blocker: Blocker,
                                         cs: ContextShift[F])
   extends MetadataReader[F] {
@@ -24,55 +25,37 @@ class MetadataReaderImpl[F[_]](mediaApi: MediaApi)
   import MetadataReaderImpl._
 
   override def readMetadata(filePath: Path): F[Option[TrackMetadata]] =
-    blocker.blockOn {
-      F.bracket(F.delay(mediaApi.newMedia(filePath.toString)))(readFileMetadata)(media => F.delay(media.release()))
-    }
-
-  private def readFileMetadata(media: Media) =
-    F.async[Option[TrackMetadata]] { cb =>
-      media.events().addMediaEventListener(new MediaEventAdapter {
-        override def mediaParsedChanged(media: Media, status: MediaParsedStatus): Unit = {
-          cb {
-            Right {
-              if (status == MediaParsedStatus.DONE) Some(toTrackMetadata(media.meta().asMetaData()))
-              else None
-            }
-          }
-
-          media.events().removeMediaEventListener(this)
-        }
-      })
-
-      media.parsing().parse(ParseFlag.FETCH_LOCAL)
-
-      ()
+    blocker.delay {
+      for {
+        mediaInfo <- mediaInfoParseCatch.opt(MediaInfo.mediaInfo(filePath.toString))
+        generalInfo <- Option(mediaInfo.first("General"))
+      } yield {
+        TrackMetadata(
+          Option(generalInfo.value("Performer")) @@@ ArtistName,
+          Option(generalInfo.value("Album")) @@@ AlbumName,
+          Option(generalInfo.value("Album/Performer")) @@@ ArtistName,
+          Option(generalInfo.value("Track name")) @@@ TrackTitle,
+          Option(generalInfo.value("Track name/Position")).flatMap(parseTrackNumber),
+          Option(generalInfo.value("Recorded date")).flatMap(parseYear)
+        )
+      }
     }
 
 }
 
 private object MetadataReaderImpl {
 
-  private def toTrackMetadata(metadata: MetaData): TrackMetadata = {
+  private val mediaInfoParseCatch: Exception.Catch[MediaInfo] =
+    catching(classOf[MediaInfoParseException])
 
-    def parseTrackNumber(number: String): Option[TrackNumber] =
-      if (number.exists(!_.isDigit)) None else Some(TrackNumber(number.toInt))
+  private def parseTrackNumber(number: String): Option[TrackNumber] =
+    if (number.exists(!_.isDigit)) None else Some(TrackNumber(number.toInt))
 
-    def parseYear(date: String): Option[TrackYear] = {
-      val hyphenIndex = date.indexOf('-')
+  private def parseYear(date: String): Option[TrackYear] = {
+    val hyphenIndex = date.indexOf('-')
+    val yearPart = if (hyphenIndex > 0) date.substring(0, hyphenIndex) else date
 
-      val yearPart = if (hyphenIndex > 0) date.substring(0, hyphenIndex) else date
-
-      if (yearPart.exists(!_.isDigit) || yearPart.length > 4) None else Some(TrackYear(yearPart.toInt))
-    }
-
-    TrackMetadata(
-      Option(metadata.get(Meta.ARTIST)).map(_.trim) @@@ ArtistName,
-      Option(metadata.get(Meta.ALBUM)).map(_.trim) @@@ AlbumName,
-      Option(metadata.get(Meta.ALBUM_ARTIST)).map(_.trim) @@@ AlbumName,
-      Option(metadata.get(Meta.TITLE)).map(_.trim) @@@ TrackTitle,
-      Option(metadata.get(Meta.TRACK_NUMBER)).map(_.trim).flatMap(parseTrackNumber),
-      Option(metadata.get(Meta.DATE)).map(_.trim).flatMap(parseYear)
-    )
+    if (yearPart.exists(!_.isDigit) || yearPart.length > 4) None else Some(TrackYear(yearPart.toInt))
   }
 
 }

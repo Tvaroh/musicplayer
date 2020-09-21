@@ -41,7 +41,7 @@ val libraryScannerImpl =
       libraryDependencies ++= Seq(
         Deps.Cats.Effect,
         Deps.FS2IO,
-        Deps.Vlcj
+        Deps.VlcjInfo
       )
     )
     .dependsOn(libraryScannerApi, utilEffect)

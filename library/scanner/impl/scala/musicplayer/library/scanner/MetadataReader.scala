@@ -2,7 +2,7 @@ package musicplayer.library.scanner
 
 import java.nio.file.Path
 
-import cats.effect.Async
+import cats.effect.{Async, Blocker, ContextShift}
 import musicplayer.library.model.metadata.TrackMetadata
 import musicplayer.library.model._
 import taggedtypes._
@@ -16,27 +16,30 @@ trait MetadataReader[F[_]] {
 }
 
 class MetadataReaderImpl[F[_]](mediaApi: MediaApi)
-                              (implicit F: Async[F])
+                              (implicit F: Async[F],
+                                        blocker: Blocker,
+                                        cs: ContextShift[F])
   extends MetadataReader[F] {
 
   import MetadataReaderImpl._
 
   override def readMetadata(filePath: Path): F[Option[TrackMetadata]] =
-    F.bracket(F.delay(mediaApi.newMedia(filePath.toString)))(readFileMetadata)(media => F.delay(media.release()))
+    blocker.blockOn {
+      F.bracket(F.delay(mediaApi.newMedia(filePath.toString)))(readFileMetadata)(media => F.delay(media.release()))
+    }
 
   private def readFileMetadata(media: Media) =
     F.async[Option[TrackMetadata]] { cb =>
       media.events().addMediaEventListener(new MediaEventAdapter {
         override def mediaParsedChanged(media: Media, status: MediaParsedStatus): Unit = {
-          if (status == MediaParsedStatus.DONE) {
-            val metadata = media.meta().asMetaData()
-
-            media.events().removeMediaEventListener(this)
-
-            cb(Right(Some(toTrackMetadata(metadata))))
-          } else {
-            cb(Right(None))
+          cb {
+            Right {
+              if (status == MediaParsedStatus.DONE) Some(toTrackMetadata(media.meta().asMetaData()))
+              else None
+            }
           }
+
+          media.events().removeMediaEventListener(this)
         }
       })
 

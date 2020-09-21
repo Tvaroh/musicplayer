@@ -8,7 +8,20 @@ import musicplayer.library.model.metadata.TrackMetadata
 import scala.collection.immutable.SeqMap
 
 case class Library(artists: SeqMap[ArtistName, Artist],
-                   incompleteMetadataTracks: Seq[(Path, TrackMetadata)])
+                   incompleteMetadataTracks: Seq[(Path, TrackMetadata)]) {
+
+  val tracks: SeqMap[(ArtistName, AlbumName, TrackTitle), Track] =
+    SeqMap.from {
+      artists.flatMap { case (_, artist) =>
+        artist.albums.flatMap { case (_, album) =>
+          album.tracks.map { case (_, track) =>
+            (artist.name, album.name, track.title) -> track
+          }
+        }
+      }
+    }
+
+}
 
 object Library {
 

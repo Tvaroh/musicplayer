@@ -12,8 +12,7 @@ import uk.co.caprica.vlcj.player.base.{MediaApi, MediaPlayer}
 import uk.co.caprica.vlcj.player.component.AudioPlayerComponent
 
 private class MusicPlayerImpl[F[_]](mediaApi: MediaApi,
-                                    override val events: Stream[F, PlayerEvent],
-                                    override val release: F[Unit])
+                                    override val events: Stream[F, PlayerEvent])
                                    (implicit F: Sync[F])
   extends MusicPlayer[F] {
 
@@ -46,15 +45,9 @@ object MusicPlayerImpl {
 
           }
         }
-      )(audioPlayerComponent => F.delay(audioPlayerComponent.release()))
+      )(audioPlayerComponent => queue.offer1(None) >> F.delay(audioPlayerComponent.release()))
         .map { audioPlayerComponent =>
-          val mediaPlayer = audioPlayerComponent.mediaPlayer()
-
-          new MusicPlayerImpl(
-            mediaPlayer.media(),
-            queue.dequeue,
-            queue.offer1(None) >> F.delay(audioPlayerComponent.release())
-          )
+          new MusicPlayerImpl(audioPlayerComponent.mediaPlayer().media(), queue.dequeue)
         }
     }
 

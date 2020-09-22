@@ -11,6 +11,4 @@ trait MusicPlayer[F[_]] {
 
   def playTrack(path: Path): F[Unit]
 
-  def release: F[Unit]
-
 }

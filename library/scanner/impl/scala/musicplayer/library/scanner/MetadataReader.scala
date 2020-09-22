@@ -1,10 +1,11 @@
-package musicplayer.library
+package musicplayer.library.scanner
 
 import java.nio.file.Path
 
 import cats.effect.{Blocker, ContextShift, Sync}
 import musicplayer.library.model._
 import musicplayer.library.model.metadata.TrackMetadata
+import musicplayer.util.model.syntax.Cond._
 import taggedtypes._
 import uk.co.caprica.vlcjinfo.{MediaInfo, MediaInfoParseException}
 
@@ -32,10 +33,12 @@ class MetadataReaderImpl[F[_]](implicit F: Sync[F],
         audioInfo <- Option(mediaInfo.first("Audio"))
       } yield {
         TrackMetadata(
-          Option(generalInfo.value("Performer")) @@@ ArtistName,
-          Option(generalInfo.value("Album")) @@@ AlbumName,
-          Option(generalInfo.value("Album/Performer")) @@@ ArtistName,
-          Option(generalInfo.value("Track name")) @@@ TrackTitle,
+          Option(generalInfo.value("Performer"))
+            .orElse(Option(generalInfo.value("Composer"))).map(cleanup) @@@ ArtistName,
+          Option(generalInfo.value("Album/Performer"))
+            .orElse(Option(generalInfo.value("Album/Composer"))).map(cleanup) @@@ ArtistName,
+          Option(generalInfo.value("Album")).map(cleanup) @@@ AlbumName,
+          Option(generalInfo.value("Track name")).map(cleanup) @@@ TrackTitle,
           Option(generalInfo.value("Track name/Position")).flatMap(parseTrackNumber),
           Option(generalInfo.value("Recorded date")).flatMap(parseYear),
           parseDurationSeconds(audioInfo.value("Duration"))
@@ -49,6 +52,11 @@ private object MetadataReaderImpl {
 
   private val mediaInfoParseCatch: Exception.Catch[MediaInfo] =
     catching(classOf[MediaInfoParseException])
+
+  private def cleanup(s: String): String =
+    s.trim
+      .cond(s.startsWith("\""))(_.substring(1))
+      .cond(s.endsWith("\""))(s => s.substring(0, s.length - 1))
 
   private def parseTrackNumber(number: String): Option[TrackNumber] =
     if (number.exists(!_.isDigit)) None else Some(TrackNumber(number.toInt))

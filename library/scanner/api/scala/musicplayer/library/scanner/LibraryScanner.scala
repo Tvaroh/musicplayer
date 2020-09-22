@@ -1,4 +1,4 @@
-package musicplayer.library
+package musicplayer.library.scanner
 
 import java.nio.file.Path
 

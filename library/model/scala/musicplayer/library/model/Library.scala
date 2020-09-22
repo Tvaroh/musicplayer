@@ -27,13 +27,15 @@ object Library {
 
   def apply(tracks: Seq[(Path, TrackMetadata)]): Library = {
     val (effectiveTracks, incompleteMetadataTracks) =
-      tracks.partition { case (_, metadata) => metadata.artistName.isDefined && metadata.title.isDefined }
+      tracks.partition { case (_, metadata) =>
+        (metadata.artistName.isDefined || metadata.albumArtistName.isDefined) && metadata.title.isDefined
+      }
 
     val artists =
       effectiveTracks
         .flatMap { case (path, metadata) => Track(path, metadata) }
-        .groupBy(_.artistName)
-        .map { case (artistName, artistTracks) =>
+        .groupBy(_.effectiveArtistName)
+        .collect { case (Some(artistName), artistTracks) =>
           val (effectiveArtistTracks, uncategorizedTracks) = artistTracks.partition(_.albumName.isDefined)
 
           val artistAlbums =

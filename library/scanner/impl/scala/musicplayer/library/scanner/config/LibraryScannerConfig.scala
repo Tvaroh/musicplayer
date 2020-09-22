@@ -1,4 +1,4 @@
-package musicplayer.library.config
+package musicplayer.library.scanner.config
 
 import musicplayer.library.model.MediaFormat
 

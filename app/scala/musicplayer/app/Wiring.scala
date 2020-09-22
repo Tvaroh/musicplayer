@@ -4,9 +4,9 @@ import java.nio.file.Paths
 
 import cats.effect.{Blocker, Concurrent, ContextShift}
 import cats.implicits._
-import musicplayer.library.config.LibraryScannerConfig
 import musicplayer.library.model.MediaFormat
-import musicplayer.library.{LibraryScannerImpl, MetadataReaderImpl, ProgressReporter}
+import musicplayer.library.scanner.config.LibraryScannerConfig
+import musicplayer.library.scanner.{LibraryScannerImpl, MetadataReaderImpl, ProgressReporter}
 import musicplayer.player.MusicPlayerImpl
 import tofu.lift.UnsafeExecFuture
 
@@ -24,7 +24,7 @@ class Wiring[F[_]](implicit F: Concurrent[F],
       )
 
     for {
-      library <- libraryScanner.scan(Set(Paths.get("/Users/tvaroh/Temp")))
+      library <- libraryScanner.scan(Set(Paths.get("/Volumes/tvaroh-ext/OneDrive/Music")))
       _ <- MusicPlayerImpl[F]().use { player =>
         val randomTrack =
           if (library.tracks.nonEmpty)

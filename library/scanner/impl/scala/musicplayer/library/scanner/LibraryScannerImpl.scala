@@ -1,10 +1,10 @@
-package musicplayer.library
+package musicplayer.library.scanner
 
 import java.nio.file.{Files, LinkOption, Path}
 
 import cats.effect.{Blocker, Concurrent, ContextShift}
 import cats.implicits._
-import musicplayer.library.config.LibraryScannerConfig
+import musicplayer.library.scanner.config.LibraryScannerConfig
 import musicplayer.library.model.metadata.TrackMetadata
 import musicplayer.library.model.{Library, MediaFormat}
 
@@ -23,6 +23,7 @@ class LibraryScannerImpl[F[_]](config: LibraryScannerConfig)
 
   private def scanPath(path: Path): F[Vector[(Path, TrackMetadata)]] =
     fs2.io.file.walk(blocker, path)
+      .filterNot(_.getFileName.toString.startsWith("."))
       .filter { file =>
         if (config.followSymLinks) Files.isRegularFile(file) else Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
       }

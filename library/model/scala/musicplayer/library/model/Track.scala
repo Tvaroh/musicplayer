@@ -2,28 +2,32 @@ package musicplayer.library.model
 
 import java.nio.file.Path
 
-import cats.implicits._
 import musicplayer.library.model.metadata.TrackMetadata
 
 case class Track(path: Path,
-                 artistName: ArtistName,
-                 albumName: Option[AlbumName],
+                 artistName: Option[ArtistName],
                  albumArtistName: Option[ArtistName],
+                 albumName: Option[AlbumName],
                  title: TrackTitle,
                  number: Option[TrackNumber],
                  year: Option[TrackYear],
-                 durationSeconds: Int)
+                 durationSeconds: Int) {
+
+  val effectiveArtistName: Option[ArtistName] =
+    artistName.orElse(albumArtistName)
+
+}
 
 object Track {
 
   def apply(path: Path, metadata: TrackMetadata): Option[Track] =
-    (metadata.artistName, metadata.title).mapN { case (artistName, trackTitle) =>
+    metadata.title.map {
       Track(
         path,
-        artistName,
-        metadata.albumName,
+        metadata.artistName,
         metadata.albumArtistName,
-        trackTitle,
+        metadata.albumName,
+        _,
         metadata.number,
         metadata.year,
         metadata.durationSeconds

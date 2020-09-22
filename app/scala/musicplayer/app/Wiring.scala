@@ -29,12 +29,12 @@ class Wiring[F[_]](implicit F: Concurrent[F],
       _ <- musicPlayerResource.use { player =>
         val randomTrack =
           if (library.tracks.nonEmpty)
-            Some(library.tracks.values.toIndexedSeq(Random.nextInt(library.tracks.size)).path)
+            Some(library.tracks.values.toIndexedSeq(Random.nextInt(library.tracks.size)))
           else
             None
 
         randomTrack.traverse {
-          player.playTrack(_) >>
+          player.play(_) >>
             player.events.map(println).compile.drain >>
             F.delay(Thread.currentThread().join())
         }

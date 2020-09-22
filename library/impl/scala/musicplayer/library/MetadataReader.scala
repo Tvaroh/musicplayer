@@ -29,6 +29,7 @@ class MetadataReaderImpl[F[_]](implicit F: Sync[F],
       for {
         mediaInfo <- mediaInfoParseCatch.opt(MediaInfo.mediaInfo(filePath.toString))
         generalInfo <- Option(mediaInfo.first("General"))
+        audioInfo <- Option(mediaInfo.first("Audio"))
       } yield {
         TrackMetadata(
           Option(generalInfo.value("Performer")) @@@ ArtistName,
@@ -36,7 +37,8 @@ class MetadataReaderImpl[F[_]](implicit F: Sync[F],
           Option(generalInfo.value("Album/Performer")) @@@ ArtistName,
           Option(generalInfo.value("Track name")) @@@ TrackTitle,
           Option(generalInfo.value("Track name/Position")).flatMap(parseTrackNumber),
-          Option(generalInfo.value("Recorded date")).flatMap(parseYear)
+          Option(generalInfo.value("Recorded date")).flatMap(parseYear),
+          parseDurationSeconds(audioInfo.value("Duration"))
         )
       }
     }
@@ -57,5 +59,20 @@ private object MetadataReaderImpl {
 
     if (yearPart.exists(!_.isDigit) || yearPart.length > 4) None else Some(TrackYear(yearPart.toInt))
   }
+
+  private def parseDurationSeconds(duration: String): Int =
+    duration
+      .split(' ')
+      .sliding(2, 2)
+      .foldLeft(0) { case (acc, Array(number, unit)) =>
+        val seconds = unit match {
+          case "s" => number.toInt
+          case "min" => number.toInt * 60
+          case "h" => number.toInt * 3600
+          case _ => 0
+        }
+
+        acc + seconds
+      }
 
 }

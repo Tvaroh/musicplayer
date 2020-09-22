@@ -7,4 +7,5 @@ case class TrackMetadata(artistName: Option[ArtistName],
                          albumArtistName: Option[ArtistName],
                          title: Option[TrackTitle],
                          number: Option[TrackNumber],
-                         year: Option[TrackYear])
+                         year: Option[TrackYear],
+                         durationSeconds: Int)

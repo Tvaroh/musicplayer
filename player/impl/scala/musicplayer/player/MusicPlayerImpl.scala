@@ -60,7 +60,11 @@ object MusicPlayerImpl {
     } { case (audioPlayerComponent, _, queue) =>
       queue.offer1(None) >> F.delay(audioPlayerComponent.release())
     } map { case (audioPlayerComponent, state, queue) =>
-      new MusicPlayerImpl(audioPlayerComponent.mediaPlayer(), state, queue.dequeue)
+      new MusicPlayerImpl(
+        audioPlayerComponent.mediaPlayer(),
+        state,
+        queue.dequeue.filterWithPrevious(_ =!= _)
+      )
     }
 
   private class AudioPlayerComponentImpl[F[_]](queue: NoneTerminatedQueue[F, PlayerEvent],

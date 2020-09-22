@@ -31,14 +31,7 @@ object Library {
 
     val artists =
       effectiveTracks
-        .flatMap { case (path, metadata) =>
-          (metadata.artistName, metadata.title).mapN { case (artistName, trackTitle) =>
-            Track(
-              path,
-              artistName, metadata.albumName, metadata.albumArtistName, trackTitle, metadata.number, metadata.year
-            )
-          }
-        }
+        .flatMap { case (path, metadata) => Track(path, metadata) }
         .groupBy(_.artistName)
         .map { case (artistName, artistTracks) =>
           val (effectiveArtistTracks, uncategorizedTracks) = artistTracks.partition(_.albumName.isDefined)

@@ -24,13 +24,20 @@ class Wiring[F[_]](implicit F: Concurrent[F],
       )
 
     for {
-      library <- libraryScanner.scan(Set(Paths.get("/Volumes/tvaroh-ext/OneDrive/Music")))
+      library <-
+        Option(System.getProperty("LIBRARY_PATH"))
+          .map(_.split(';').toSet.map(Paths.get(_: String)))
+          .traverse(libraryScanner.scan)
+
       _ <- MusicPlayerImpl[F]().use { player =>
-        val randomTrack =
-          if (library.tracks.nonEmpty)
-            Some(library.tracks.values.toIndexedSeq(Random.nextInt(library.tracks.size)))
-          else
-            None
+        val randomTrack = for {
+          library <- library
+          track <-
+            if (library.tracks.nonEmpty)
+              Some(library.tracks.values.toIndexedSeq(Random.nextInt(library.tracks.size)))
+            else
+              None
+        } yield track
 
         randomTrack.traverse {
           player.play(_) >>

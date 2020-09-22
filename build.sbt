@@ -56,6 +56,23 @@ val libraryScannerImpl =
       )
     )
     .dependsOn(libraryScannerApi, utilEffect)
+val libraryDbApi =
+  project.in(file("library/db/api"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "library-db-api"
+    )
+    .dependsOn(libraryModel)
+val libraryDbImpl =
+  project.in(file("library/db/impl"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "library-db-impl",
+      libraryDependencies ++= Seq(
+        Deps.H2
+      )
+    )
+    .dependsOn(libraryDbApi, utilEffect)
 
 val playerModel =
   project.in(file("player/model"))
@@ -94,4 +111,4 @@ val app =
         Deps.MonixEval
       )
     )
-    .dependsOn(libraryScannerImpl, playerImpl)
+    .dependsOn(libraryScannerImpl, libraryDbImpl, playerImpl)

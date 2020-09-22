@@ -21,6 +21,8 @@ object Deps {
 
   val FS2IO = "co.fs2" %% "fs2-io" % "2.4.4"
 
+  val H2 = "com.h2database" % "h2" % "1.4.200" % Test
+
   val VlcjInfo = "uk.co.caprica" % "vlcj-info" % "2.0.0"
   val Vlcj = "uk.co.caprica" % "vlcj" % "4.6.0"
 

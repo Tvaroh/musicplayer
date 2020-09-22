@@ -64,6 +64,7 @@ val libraryScannerImpl =
       )
     )
     .dependsOn(libraryScannerApi, utilEffect)
+
 val libraryDbApi =
   project.in(file("library/db/api"))
     .settings(Settings.sharedSettings)

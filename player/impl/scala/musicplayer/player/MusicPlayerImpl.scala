@@ -3,7 +3,7 @@ package musicplayer.player
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, Resource, Sync}
 import cats.implicits._
-import cats.~>
+import cats.{Monad, ~>}
 import fs2._
 import fs2.concurrent.{NoneTerminatedQueue, Queue}
 import musicplayer.library.model.Track
@@ -56,7 +56,7 @@ object MusicPlayerImpl {
         state <- Ref.of(State())
         queue <- Queue.boundedNoneTerminated[F, PlayerEvent](eventsBufferSize)
         runToFuture <- unsafeExecFuture.unlift
-      } yield (new AudioPlayerComponentImpl(queue, runToFuture), state, queue)
+      } yield (new AudioPlayerComponentImpl(state, queue, runToFuture), state, queue)
     } { case (audioPlayerComponent, _, queue) =>
       queue.offer1(None) >> F.delay(audioPlayerComponent.release())
     } map { case (audioPlayerComponent, state, queue) =>
@@ -67,12 +67,15 @@ object MusicPlayerImpl {
       )
     }
 
-  private class AudioPlayerComponentImpl[F[_]](queue: NoneTerminatedQueue[F, PlayerEvent],
+  private class AudioPlayerComponentImpl[F[_]](state: Ref[F, MusicPlayerImpl.State],
+                                               queue: NoneTerminatedQueue[F, PlayerEvent],
                                                runToFuture: F ~> Future)
+                                              (implicit F: Monad[F])
     extends AudioPlayerComponent {
 
     override def playing(mediaPlayer: MediaPlayer): Unit = {
-      sendEvent(PlayerEvent.PlayingStarted())
+      runToFuture(state.get.map(_.currentTrack.map(PlayerEvent.PlayingStarted)).flatMap(queue.offer1))
+      ()
     }
 
     override def paused(mediaPlayer: MediaPlayer): Unit = {
@@ -96,6 +99,8 @@ object MusicPlayerImpl {
 
   private trait State {
 
+    def currentTrack: Option[Track]
+
     def play(track: Track): State
     def pause: State
     def isPaused: Boolean
@@ -109,7 +114,7 @@ object MusicPlayerImpl {
     def apply(): State =
       Impl(None, paused = false)
 
-    private case class Impl(currentTrack: Option[Track],
+    private case class Impl(override val currentTrack: Option[Track],
                             paused: Boolean)
       extends State {
 

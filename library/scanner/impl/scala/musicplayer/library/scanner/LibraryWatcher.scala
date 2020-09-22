@@ -5,17 +5,17 @@ import java.nio.file._
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.implicits._
 import fs2._
-import musicplayer.library.scanner.model.LibraryEvent
+import musicplayer.library.scanner.model.LibraryWatcherEvent
 
 import scala.jdk.CollectionConverters._
 
 trait LibraryWatcher[F[_]] {
 
-  def events: Stream[F, LibraryEvent]
+  def events: Stream[F, LibraryWatcherEvent]
 
 }
 
-private class LibraryWatcherImpl[F[_]](override val events: Stream[F, LibraryEvent])
+private class LibraryWatcherImpl[F[_]](override val events: Stream[F, LibraryWatcherEvent])
   extends LibraryWatcher[F]
 
 object LibraryWatcherImpl {
@@ -74,7 +74,7 @@ object LibraryWatcherImpl {
                                       watchService: WatchService)
                                      (implicit F: Sync[F],
                                                blocker: Blocker,
-                                               cs: ContextShift[F]): F[List[LibraryEvent]] =
+                                               cs: ContextShift[F]): F[List[LibraryWatcherEvent]] =
     (watchKey.watchable() match {
       case directory: Path =>
         watchKey.pollEvents().asScala.toList
@@ -86,19 +86,19 @@ object LibraryWatcherImpl {
                 event.kind match {
                   case StandardWatchEventKinds.ENTRY_CREATE =>
                     registerDirectory(absolutePath, watchService).whenA(Files.isDirectory(absolutePath))
-                      .as((LibraryEvent.Created(absolutePath): LibraryEvent).some)
+                      .as((LibraryWatcherEvent.Created(absolutePath): LibraryWatcherEvent).some)
                   case StandardWatchEventKinds.ENTRY_DELETE =>
-                    F.pure((LibraryEvent.Deleted(absolutePath): LibraryEvent).some)
+                    F.pure((LibraryWatcherEvent.Deleted(absolutePath): LibraryWatcherEvent).some)
                   case _ =>
-                    F.pure(none[LibraryEvent])
+                    F.pure(none[LibraryWatcherEvent])
                 }
               case _ =>
-                F.pure(none[LibraryEvent])
+                F.pure(none[LibraryWatcherEvent])
             }
           }
           .map(_.flatten)
       case _ =>
-        F.pure(List.empty[LibraryEvent])
+        F.pure(List.empty[LibraryWatcherEvent])
     }) <* F.delay(watchKey.reset())
 
 }

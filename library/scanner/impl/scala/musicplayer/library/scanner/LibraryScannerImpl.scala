@@ -24,8 +24,8 @@ class LibraryScannerImpl[F[_]](config: LibraryScannerConfig)
   private def scanPath(path: Path): F[Vector[(Path, TrackMetadata)]] =
     fs2.io.file.walk(blocker, path)
       .filterNot(_.getFileName.toString.startsWith("."))
-      .filter { file =>
-        if (config.followSymLinks) Files.isRegularFile(file) else Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
+      .filter { path =>
+        if (config.followSymLinks) Files.isRegularFile(path) else Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)
       }
       .mapAsync(1) { filePath =>
         MediaFormat.fromFilename(filePath.getFileName.toString)

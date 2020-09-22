@@ -38,13 +38,21 @@ val libraryModel =
       )
     )
     .dependsOn(utilModel)
+
+val libraryScannerModel =
+  project.in(file("library/scanner/model"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "library-scanner-model",
+    )
+    .dependsOn(utilModel)
 val libraryScannerApi =
   project.in(file("library/scanner/api"))
     .settings(Settings.sharedSettings)
     .settings(
       name := "library-scanner-api"
     )
-    .dependsOn(libraryModel)
+    .dependsOn(libraryScannerModel, libraryModel)
 val libraryScannerImpl =
   project.in(file("library/scanner/impl"))
     .settings(Settings.sharedSettings)

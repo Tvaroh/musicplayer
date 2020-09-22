@@ -50,7 +50,10 @@ val libraryScannerApi =
   project.in(file("library/scanner/api"))
     .settings(Settings.sharedSettings)
     .settings(
-      name := "library-scanner-api"
+      name := "library-scanner-api",
+      libraryDependencies ++= Seq(
+        Deps.FS2IO
+      )
     )
     .dependsOn(libraryScannerModel, libraryModel)
 val libraryScannerImpl =
@@ -59,7 +62,6 @@ val libraryScannerImpl =
     .settings(
       name := "library-scanner-impl",
       libraryDependencies ++= Seq(
-        Deps.FS2IO,
         Deps.VlcjInfo
       )
     )

@@ -4,9 +4,9 @@ import java.nio.file.Paths
 
 import cats.effect.{Blocker, Concurrent, ContextShift}
 import cats.implicits._
-import musicplayer.library.model.MediaFormat
+import musicplayer.library.model.{Library, MediaFormat}
 import musicplayer.library.scanner.config.LibraryScannerConfig
-import musicplayer.library.scanner.{LibraryScannerImpl, LibraryWatcherImpl, MetadataReaderImpl, ProgressReporter}
+import musicplayer.library.scanner.{LibraryScannerImpl, LibraryWatcherImpl, MetadataReaderImpl}
 import musicplayer.player.MusicPlayerImpl
 import tofu.lift.UnsafeExecFuture
 
@@ -19,7 +19,7 @@ class Wiring[F[_]](implicit F: Concurrent[F],
 
   val app: F[Unit] = {
     val config = LibraryScannerConfig(MediaFormat.All, followSymLinks = false)
-    val libraryScanner = new LibraryScannerImpl[F](config)(new MetadataReaderImpl, ProgressReporter.empty)
+    val libraryScanner = new LibraryScannerImpl[F](config)(new MetadataReaderImpl)
 
     val libraryPaths =
       Option(System.getProperty("LIBRARY_PATH"))
@@ -28,7 +28,11 @@ class Wiring[F[_]](implicit F: Concurrent[F],
 
     LibraryWatcherImpl(config.followSymLinks, libraryPaths).use { libraryWatcher =>
       for {
-        library <- libraryScanner.scan(libraryPaths)
+        library <-
+          libraryScanner.scan(libraryPaths)
+            .evalTap { case (path, _) => F.delay(println(path)) }
+            .compile.toVector
+            .map(Library(_))
 
         _ <- MusicPlayerImpl[F]().use { player =>
           val randomTrack =

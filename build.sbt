@@ -6,6 +6,16 @@ version in ThisBuild := "0.1-SNAPSHOT"
 sourcesInBase := false
 Settings.sharedSettings
 
+val utilModel =
+  project.in(file("util/model"))
+    .settings(Settings.sharedSettings)
+    .settings(
+      name := "util-model",
+      libraryDependencies ++= Seq(
+        Deps.TaggedTypes,
+        Deps.Cats.Core
+      )
+    )
 lazy val utilEffect =
   project.in(file("util/effect"))
     .settings(Settings.sharedSettings)
@@ -27,24 +37,25 @@ val libraryModel =
         Deps.Cats.Core
       )
     )
-val libraryApi =
-  project.in(file("library/api"))
+    .dependsOn(utilModel)
+val libraryScannerApi =
+  project.in(file("library/scanner/api"))
     .settings(Settings.sharedSettings)
     .settings(
-      name := "library-api"
+      name := "library-scanner-api"
     )
     .dependsOn(libraryModel)
-val libraryImpl =
-  project.in(file("library/impl"))
+val libraryScannerImpl =
+  project.in(file("library/scanner/impl"))
     .settings(Settings.sharedSettings)
     .settings(
-      name := "library-impl",
+      name := "library-scanner-impl",
       libraryDependencies ++= Seq(
         Deps.FS2IO,
         Deps.VlcjInfo
       )
     )
-    .dependsOn(libraryApi, utilEffect)
+    .dependsOn(libraryScannerApi, utilEffect)
 
 val playerModel =
   project.in(file("player/model"))
@@ -72,7 +83,7 @@ val playerImpl =
         Deps.Vlcj
       )
     )
-    .dependsOn(playerApi, libraryApi, utilEffect)
+    .dependsOn(playerApi, libraryScannerApi, utilEffect)
 
 val app =
   project.in(file("app"))
@@ -83,4 +94,4 @@ val app =
         Deps.MonixEval
       )
     )
-    .dependsOn(libraryImpl, playerImpl)
+    .dependsOn(libraryScannerImpl, playerImpl)

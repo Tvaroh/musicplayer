@@ -35,7 +35,7 @@ object LibraryWatcherImpl {
           new LibraryWatcherImpl(
             Stream.eval(blocker.delay(watchService.take()))
               .repeat
-              .evalMap(handleWatchEvents(_, watchService))
+              .evalMap(handleWatchEvents(_)(registerDirectory(_, watchService)))
               .flatMap(events => Stream(events: _*))
           )
 
@@ -70,11 +70,9 @@ object LibraryWatcherImpl {
       }
       .map(_.view.flatten.toSet)
 
-  private def handleWatchEvents[F[_]](watchKey: WatchKey,
-                                      watchService: WatchService)
-                                     (implicit F: Sync[F],
-                                               blocker: Blocker,
-                                               cs: ContextShift[F]): F[List[LibraryWatcherEvent]] =
+  private def handleWatchEvents[F[_]](watchKey: WatchKey)
+                                     (registerDirectory: Path => F[Unit])
+                                     (implicit F: Sync[F]): F[List[LibraryWatcherEvent]] =
     (watchKey.watchable() match {
       case directory: Path =>
         watchKey.pollEvents().asScala.toList
@@ -85,7 +83,7 @@ object LibraryWatcherImpl {
 
                 event.kind match {
                   case StandardWatchEventKinds.ENTRY_CREATE =>
-                    registerDirectory(absolutePath, watchService).whenA(Files.isDirectory(absolutePath))
+                    registerDirectory(absolutePath).whenA(Files.isDirectory(absolutePath))
                       .as((LibraryWatcherEvent.Created(absolutePath): LibraryWatcherEvent).some)
                   case StandardWatchEventKinds.ENTRY_DELETE =>
                     F.pure((LibraryWatcherEvent.Deleted(absolutePath): LibraryWatcherEvent).some)

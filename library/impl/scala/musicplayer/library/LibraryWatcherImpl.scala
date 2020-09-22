@@ -1,19 +1,13 @@
-package musicplayer.library.scanner
+package musicplayer.library
 
 import java.nio.file._
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.implicits._
 import fs2._
-import musicplayer.library.scanner.model.LibraryWatcherEvent
+import musicplayer.library.model.event.LibraryWatcherEvent
 
 import scala.jdk.CollectionConverters._
-
-trait LibraryWatcher[F[_]] {
-
-  def events: Stream[F, LibraryWatcherEvent]
-
-}
 
 private class LibraryWatcherImpl[F[_]](override val events: Stream[F, LibraryWatcherEvent])
   extends LibraryWatcher[F]

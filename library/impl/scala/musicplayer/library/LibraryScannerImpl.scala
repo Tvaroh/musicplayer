@@ -1,15 +1,14 @@
-package musicplayer.library.scanner
+package musicplayer.library
 
 import java.nio.file.{Files, LinkOption, Path}
 
 import cats.effect.{Blocker, Concurrent, ContextShift}
 import cats.implicits._
 import fs2._
-import musicplayer.library.model.MediaFormat
-import musicplayer.library.model.metadata.TrackMetadata
-import musicplayer.library.scanner.config.LibraryScannerConfig
+import musicplayer.library.config.LibraryConfig
+import musicplayer.library.model.{MediaFormat, TrackMetadata}
 
-class LibraryScannerImpl[F[_]](config: LibraryScannerConfig)
+class LibraryScannerImpl[F[_]](config: LibraryConfig)
                               (metadataReader: MetadataReader[F])
                               (implicit F: Concurrent[F],
                                         blocker: Blocker,

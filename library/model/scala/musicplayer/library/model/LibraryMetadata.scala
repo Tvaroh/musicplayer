@@ -3,12 +3,11 @@ package musicplayer.library.model
 import java.nio.file.Path
 
 import cats.implicits._
-import musicplayer.library.model.metadata.TrackMetadata
 
 import scala.collection.immutable.SeqMap
 
-case class Library(artists: SeqMap[ArtistName, Artist],
-                   incompleteMetadataTracks: Seq[(Path, TrackMetadata)]) {
+case class LibraryMetadata(artists: SeqMap[ArtistName, Artist],
+                           incompleteMetadataTracks: Seq[(Path, TrackMetadata)]) {
 
   val tracks: SeqMap[(ArtistName, AlbumName, TrackTitle), Track] =
     SeqMap.from {
@@ -23,9 +22,9 @@ case class Library(artists: SeqMap[ArtistName, Artist],
 
 }
 
-object Library {
+object LibraryMetadata {
 
-  def apply(tracks: Seq[(Path, TrackMetadata)]): Library = {
+  def apply(tracks: Seq[(Path, TrackMetadata)]): LibraryMetadata = {
     val (effectiveTracks, incompleteMetadataTracks) =
       tracks.partition { case (_, metadata) =>
         (metadata.artistName.isDefined || metadata.albumArtistName.isDefined) && metadata.title.isDefined
@@ -58,7 +57,7 @@ object Library {
         }
         .toSeq
 
-    Library(
+    LibraryMetadata(
       SeqMap.from {
         artists.view
           .sortBy(_.name)

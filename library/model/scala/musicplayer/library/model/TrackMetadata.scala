@@ -1,6 +1,4 @@
-package musicplayer.library.model.metadata
-
-import musicplayer.library.model._
+package musicplayer.library.model
 
 case class TrackMetadata(artistName: Option[ArtistName],
                          albumArtistName: Option[ArtistName],

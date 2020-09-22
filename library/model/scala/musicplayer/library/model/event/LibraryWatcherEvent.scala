@@ -1,4 +1,4 @@
-package musicplayer.library.scanner.model
+package musicplayer.library.model.event
 
 import java.nio.file.Path
 

@@ -1,22 +1,15 @@
-package musicplayer.library.scanner
+package musicplayer.library
 
 import java.nio.file.Path
 
 import cats.effect.{Blocker, ContextShift, Sync}
-import musicplayer.library.model._
-import musicplayer.library.model.metadata.TrackMetadata
+import musicplayer.library.model.{TrackMetadata, _}
 import musicplayer.util.model.syntax.Cond._
 import taggedtypes._
 import uk.co.caprica.vlcjinfo.{MediaInfo, MediaInfoParseException}
 
 import scala.util.control.Exception
 import scala.util.control.Exception.catching
-
-trait MetadataReader[F[_]] {
-
-  def readMetadata(filePath: Path): F[Option[TrackMetadata]]
-
-}
 
 class MetadataReaderImpl[F[_]](implicit F: Sync[F],
                                         blocker: Blocker,

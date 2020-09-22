@@ -1,12 +1,18 @@
 package musicplayer.player
+
 import java.nio.file.Path
 
-import cats.effect.Sync
+import cats.effect.{Concurrent, Resource, Sync}
 import cats.implicits._
-import uk.co.caprica.vlcj.player.base.MediaApi
+import fs2._
+import fs2.concurrent.Queue
+import musicplayer.player.model.PlayerEvent
+import tofu.lift.UnsafeExecFuture
+import uk.co.caprica.vlcj.player.base.{MediaApi, MediaPlayer}
 import uk.co.caprica.vlcj.player.component.AudioPlayerComponent
 
 private class MusicPlayerImpl[F[_]](mediaApi: MediaApi,
+                                    override val events: Stream[F, PlayerEvent],
                                     override val release: F[Unit])
                                    (implicit F: Sync[F])
   extends MusicPlayer[F] {
@@ -18,13 +24,38 @@ private class MusicPlayerImpl[F[_]](mediaApi: MediaApi,
 
 object MusicPlayerImpl {
 
-  def apply[F[_]](implicit F: Sync[F]): F[MusicPlayer[F]] =
+  def apply[F[_]](eventsBufferSize: Int = 100)
+                 (implicit F: Concurrent[F],
+                           unsafeExecFuture: UnsafeExecFuture[F]): F[Resource[F, MusicPlayer[F]]] =
     for {
-      audioPlayerComponent <- F.delay(new AudioPlayerComponent())
+      queue <- Queue.boundedNoneTerminated[F, PlayerEvent](eventsBufferSize)
+      runToFuture <- unsafeExecFuture.unlift
     } yield {
-      val mediaPlayer = audioPlayerComponent.mediaPlayer()
+      Resource.make(
+        F.delay {
+          new AudioPlayerComponent() {
 
-      new MusicPlayerImpl(mediaPlayer.media(), F.delay(audioPlayerComponent.release()))
+            override def timeChanged(mediaPlayer: MediaPlayer, newTime: Long): Unit = {
+              sendEvent(PlayerEvent.TimeChanged((newTime / 1000).toInt))
+            }
+
+            private def sendEvent(event: PlayerEvent): Unit = {
+              runToFuture(queue.offer1(Some(event)))
+              ()
+            }
+
+          }
+        }
+      )(audioPlayerComponent => F.delay(audioPlayerComponent.release()))
+        .map { audioPlayerComponent =>
+          val mediaPlayer = audioPlayerComponent.mediaPlayer()
+
+          new MusicPlayerImpl(
+            mediaPlayer.media(),
+            queue.dequeue,
+            queue.offer1(None) >> F.delay(audioPlayerComponent.release())
+          )
+        }
     }
 
 }

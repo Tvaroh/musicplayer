@@ -12,7 +12,8 @@ lazy val utilEffect =
     .settings(
       name := "util-effect",
       libraryDependencies ++= Seq(
-        Deps.Cats.Effect
+        Deps.Cats.Effect,
+        Deps.TofuCore
       )
     )
 
@@ -56,7 +57,10 @@ val playerApi =
   project.in(file("player/api"))
     .settings(Settings.sharedSettings)
     .settings(
-      name := "player-api"
+      name := "player-api",
+      libraryDependencies ++= Seq(
+        Deps.FS2IO
+      )
     )
     .dependsOn(playerModel)
 val playerImpl =

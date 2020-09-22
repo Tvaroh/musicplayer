@@ -8,12 +8,14 @@ import musicplayer.library.config.LibraryScannerConfig
 import musicplayer.library.model.MediaFormat
 import musicplayer.library.{LibraryScannerImpl, MetadataReaderImpl, ProgressReporter}
 import musicplayer.player.MusicPlayerImpl
+import tofu.lift.UnsafeExecFuture
 
 import scala.util.Random
 
 class Wiring[F[_]](implicit F: Concurrent[F],
                             blocker: Blocker,
-                            cs: ContextShift[F]) {
+                            cs: ContextShift[F],
+                            unsafeExecFuture: UnsafeExecFuture[F]) {
 
   val app: F[Unit] = {
     val libraryScanner =
@@ -23,16 +25,20 @@ class Wiring[F[_]](implicit F: Concurrent[F],
 
     for {
       library <- libraryScanner.scan(Set(Paths.get("/Users/tvaroh/Temp")))
-      player <- MusicPlayerImpl[F]
+      musicPlayerResource <- MusicPlayerImpl[F]()
+      _ <- musicPlayerResource.use { player =>
+        val randomTrack =
+          if (library.tracks.nonEmpty)
+            Some(library.tracks.values.toIndexedSeq(Random.nextInt(library.tracks.size)).path)
+          else
+            None
 
-      allTracks = library.tracks
-      randomTrack =
-        if (allTracks.nonEmpty) Some(allTracks.values.toIndexedSeq(Random.nextInt(allTracks.size))) else None
-
-      _ <-
-        randomTrack
-          .map(_.path)
-          .traverse(player.playTrack(_) >> F.delay(Thread.currentThread().join()))
+        randomTrack.traverse {
+          player.playTrack(_) >>
+            player.events.map(println).compile.drain >>
+            F.delay(Thread.currentThread().join())
+        }
+      }
     } yield ()
   }
 

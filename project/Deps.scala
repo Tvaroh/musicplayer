@@ -17,6 +17,8 @@ object Deps {
 
   }
 
+  val TofuCore = "ru.tinkoff" %% "tofu-core" % "0.7.9"
+
   val FS2IO = "co.fs2" %% "fs2-io" % "2.4.4"
 
   val VlcjInfo = "uk.co.caprica" % "vlcj-info" % "2.0.0"

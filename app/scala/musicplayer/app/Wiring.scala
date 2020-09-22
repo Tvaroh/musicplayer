@@ -25,8 +25,7 @@ class Wiring[F[_]](implicit F: Concurrent[F],
 
     for {
       library <- libraryScanner.scan(Set(Paths.get("/Users/tvaroh/Temp")))
-      musicPlayerResource <- MusicPlayerImpl[F]()
-      _ <- musicPlayerResource.use { player =>
+      _ <- MusicPlayerImpl[F]().use { player =>
         val randomTrack =
           if (library.tracks.nonEmpty)
             Some(library.tracks.values.toIndexedSeq(Random.nextInt(library.tracks.size)))

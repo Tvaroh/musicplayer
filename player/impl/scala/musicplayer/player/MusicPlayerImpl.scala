@@ -3,13 +3,16 @@ package musicplayer.player
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, Resource, Sync}
 import cats.implicits._
+import cats.~>
 import fs2._
-import fs2.concurrent.Queue
+import fs2.concurrent.{NoneTerminatedQueue, Queue}
 import musicplayer.library.model.Track
 import musicplayer.player.model.PlayerEvent
 import tofu.lift.UnsafeExecFuture
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.component.AudioPlayerComponent
+
+import scala.concurrent.Future
 
 private class MusicPlayerImpl[F[_]](mediaPlayer: MediaPlayer,
                                     state: Ref[F, MusicPlayerImpl.State],
@@ -47,44 +50,45 @@ object MusicPlayerImpl {
 
   def apply[F[_]](eventsBufferSize: Int = 100)
                  (implicit F: Concurrent[F],
-                           unsafeExecFuture: UnsafeExecFuture[F]): F[Resource[F, MusicPlayer[F]]] =
-    for {
-      state <- Ref.of(State())
-      queue <- Queue.boundedNoneTerminated[F, PlayerEvent](eventsBufferSize)
-      runToFuture <- unsafeExecFuture.unlift
-    } yield {
-      Resource.make(
-        F.delay {
-          new AudioPlayerComponent() {
-
-            override def playing(mediaPlayer: MediaPlayer): Unit = {
-              sendEvent(PlayerEvent.PlayingStarted())
-            }
-
-            override def paused(mediaPlayer: MediaPlayer): Unit = {
-              sendEvent(PlayerEvent.PlayingPaused())
-            }
-
-            override def stopped(mediaPlayer: MediaPlayer): Unit = {
-              sendEvent(PlayerEvent.PlayingStopped())
-            }
-
-            override def timeChanged(mediaPlayer: MediaPlayer, newTime: Long): Unit = {
-              sendEvent(PlayerEvent.TimeChanged((newTime / 1000).toInt))
-            }
-
-            private def sendEvent(event: PlayerEvent): Unit = {
-              runToFuture(queue.offer1(Some(event)))
-              ()
-            }
-
-          }
-        }
-      )(audioPlayerComponent => queue.offer1(None) >> F.delay(audioPlayerComponent.release()))
-        .map { audioPlayerComponent =>
-          new MusicPlayerImpl(audioPlayerComponent.mediaPlayer(), state, queue.dequeue)
-        }
+                           unsafeExecFuture: UnsafeExecFuture[F]): Resource[F, MusicPlayer[F]] =
+    Resource.make {
+      for {
+        state <- Ref.of(State())
+        queue <- Queue.boundedNoneTerminated[F, PlayerEvent](eventsBufferSize)
+        runToFuture <- unsafeExecFuture.unlift
+      } yield (new AudioPlayerComponentImpl(queue, runToFuture), state, queue)
+    } { case (audioPlayerComponent, _, queue) =>
+      queue.offer1(None) >> F.delay(audioPlayerComponent.release())
+    } map { case (audioPlayerComponent, state, queue) =>
+      new MusicPlayerImpl(audioPlayerComponent.mediaPlayer(), state, queue.dequeue)
     }
+
+  private class AudioPlayerComponentImpl[F[_]](queue: NoneTerminatedQueue[F, PlayerEvent],
+                                               runToFuture: F ~> Future)
+    extends AudioPlayerComponent {
+
+    override def playing(mediaPlayer: MediaPlayer): Unit = {
+      sendEvent(PlayerEvent.PlayingStarted())
+    }
+
+    override def paused(mediaPlayer: MediaPlayer): Unit = {
+      sendEvent(PlayerEvent.PlayingPaused())
+    }
+
+    override def stopped(mediaPlayer: MediaPlayer): Unit = {
+      sendEvent(PlayerEvent.PlayingStopped())
+    }
+
+    override def timeChanged(mediaPlayer: MediaPlayer, newTime: Long): Unit = {
+      sendEvent(PlayerEvent.TimeChanged((newTime / 1000).toInt))
+    }
+
+    private def sendEvent(event: PlayerEvent): Unit = {
+      runToFuture(queue.offer1(Some(event)))
+      ()
+    }
+
+  }
 
   private trait State {
 

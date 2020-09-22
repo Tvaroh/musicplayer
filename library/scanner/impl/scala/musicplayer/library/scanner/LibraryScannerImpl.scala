@@ -17,7 +17,8 @@ class LibraryScannerImpl[F[_]](config: LibraryScannerConfig)
   extends LibraryScanner[F] {
 
   override def scan(paths: Set[Path]): Stream[F, (Path, TrackMetadata)] =
-    paths.map(scanPath).reduce(_ ++ _)
+    paths.map(scanPath)
+      .foldLeft(Stream[F, (Path, TrackMetadata)]())(_ ++ _)
 
   private def scanPath(path: Path): Stream[F, (Path, TrackMetadata)] =
     fs2.io.file.walk(blocker, path)

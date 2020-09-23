@@ -2,19 +2,21 @@ package musicplayer.app
 
 import java.nio.file.Paths
 
-import cats.effect.{Blocker, Concurrent, ContextShift}
+import cats.effect.Concurrent
 import cats.implicits._
-import musicplayer.library.{LibraryScannerImpl, LibraryWatcherImpl, MetadataReaderImpl}
 import musicplayer.library.config.LibraryConfig
 import musicplayer.library.model.{LibraryMetadata, MediaFormat}
+import musicplayer.library.{LibraryScannerImpl, LibraryWatcherImpl, MetadataReaderImpl}
 import musicplayer.player.MusicPlayerImpl
+import musicplayer.util.effect.FileWalk
+import tofu.Blocks
 import tofu.lift.UnsafeExecFuture
 
 import scala.util.Random
 
 class Wiring[F[_]](implicit F: Concurrent[F],
-                            blocker: Blocker,
-                            cs: ContextShift[F],
+                            blocks: Blocks[F],
+                            fileWalk: FileWalk[F],
                             unsafeExecFuture: UnsafeExecFuture[F]) {
 
   val app: F[Unit] = {

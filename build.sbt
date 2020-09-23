@@ -23,7 +23,8 @@ lazy val utilEffect =
       name := "util-effect",
       libraryDependencies ++= Seq(
         Deps.Cats.Effect,
-        Deps.TofuCore
+        Deps.TofuCore,
+        Deps.FS2IO
       )
     )
 

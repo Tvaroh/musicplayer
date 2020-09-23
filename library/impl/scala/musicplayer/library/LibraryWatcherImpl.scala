@@ -2,10 +2,13 @@ package musicplayer.library
 
 import java.nio.file._
 
-import cats.effect.{Blocker, ContextShift, Resource, Sync}
+import cats.effect.{Resource, Sync}
 import cats.implicits._
 import fs2._
 import musicplayer.library.model.event.LibraryWatcherEvent
+import musicplayer.util.effect.FileWalk
+import tofu.Blocks
+import tofu.syntax.scoped.blocking
 
 import scala.jdk.CollectionConverters._
 
@@ -17,8 +20,8 @@ object LibraryWatcherImpl {
   def apply[F[_]](followSymLinks: Boolean,
                   paths: Set[Path])
                  (implicit F: Sync[F],
-                           blocker: Blocker,
-                           cs: ContextShift[F]): Resource[F, LibraryWatcher[F]] =
+                           blocks: Blocks[F],
+                           fileWalk: FileWalk[F]): Resource[F, LibraryWatcher[F]] =
     Resource.make {
       for {
         watchService <- F.delay(FileSystems.getDefault.newWatchService())
@@ -27,7 +30,7 @@ object LibraryWatcherImpl {
       } yield {
         val libraryWatcher =
           new LibraryWatcherImpl(
-            Stream.eval(blocker.delay(watchService.take()))
+            Stream.eval(blocking(F.delay(watchService.take())))
               .repeat
               .evalMap(handleWatchEvents(_)(registerDirectory(_, watchService)))
               .flatMap(events => Stream(events: _*))
@@ -40,22 +43,21 @@ object LibraryWatcherImpl {
 
   private def registerDirectory[F[_]](directory: Path, watchService: WatchService)
                                      (implicit F: Sync[F],
-                                               blocker: Blocker,
-                                               cs: ContextShift[F]): F[Unit] =
-    blocker
-      .delay {
+                                               blocks: Blocks[F]): F[Unit] =
+    blocking {
+      F.delay {
         directory.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE)
+        ()
       }
-      .void
+    }
 
   private def findDirectoriesToWatch[F[_]](followSymLinks: Boolean,
                                            paths: Set[Path])
                                           (implicit F: Sync[F],
-                                                    blocker: Blocker,
-                                                    cs: ContextShift[F]): F[Set[Path]] =
+                                                    fileWalk: FileWalk[F]): F[Set[Path]] =
     paths.toList
       .traverse { path =>
-        fs2.io.file.walk(blocker, path)
+        fileWalk.walk(path)
           .filter { path =>
             if (followSymLinks) Files.isDirectory(path) else Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)
           }

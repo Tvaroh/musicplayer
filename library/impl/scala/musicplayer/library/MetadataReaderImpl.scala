@@ -2,40 +2,43 @@ package musicplayer.library
 
 import java.nio.file.Path
 
-import cats.effect.{Blocker, ContextShift, Sync}
-import musicplayer.library.model.{TrackMetadata, _}
+import cats.effect.Sync
+import musicplayer.library.model._
 import musicplayer.util.model.syntax.Cond._
 import taggedtypes._
+import tofu.Blocks
+import tofu.syntax.scoped.blocking
 import uk.co.caprica.vlcjinfo.{MediaInfo, MediaInfoParseException}
 
 import scala.util.control.Exception
 import scala.util.control.Exception.catching
 
 class MetadataReaderImpl[F[_]](implicit F: Sync[F],
-                                        blocker: Blocker,
-                                        cs: ContextShift[F])
+                                        blocks: Blocks[F])
   extends MetadataReader[F] {
 
   import MetadataReaderImpl._
 
   override def readMetadata(filePath: Path): F[Option[TrackMetadata]] =
-    blocker.delay {
-      for {
-        mediaInfo <- mediaInfoParseCatch.opt(MediaInfo.mediaInfo(filePath.toString))
-        generalInfo <- Option(mediaInfo.first("General"))
-        audioInfo <- Option(mediaInfo.first("Audio"))
-      } yield {
-        TrackMetadata(
-          Option(generalInfo.value("Performer"))
-            .orElse(Option(generalInfo.value("Composer"))).map(cleanup) @@@ ArtistName,
-          Option(generalInfo.value("Album/Performer"))
-            .orElse(Option(generalInfo.value("Album/Composer"))).map(cleanup) @@@ ArtistName,
-          Option(generalInfo.value("Album")).map(cleanup) @@@ AlbumName,
-          Option(generalInfo.value("Track name")).map(cleanup) @@@ TrackTitle,
-          Option(generalInfo.value("Track name/Position")).flatMap(parseTrackNumber),
-          Option(generalInfo.value("Recorded date")).flatMap(parseYear),
-          parseDurationSeconds(audioInfo.value("Duration"))
-        )
+    blocking {
+      F.delay {
+        for {
+          mediaInfo <- mediaInfoParseCatch.opt(MediaInfo.mediaInfo(filePath.toString))
+          generalInfo <- Option(mediaInfo.first("General"))
+          audioInfo <- Option(mediaInfo.first("Audio"))
+        } yield {
+          TrackMetadata(
+            Option(generalInfo.value("Performer"))
+              .orElse(Option(generalInfo.value("Composer"))).map(cleanup) @@@ ArtistName,
+            Option(generalInfo.value("Album/Performer"))
+              .orElse(Option(generalInfo.value("Album/Composer"))).map(cleanup) @@@ ArtistName,
+            Option(generalInfo.value("Album")).map(cleanup) @@@ AlbumName,
+            Option(generalInfo.value("Track name")).map(cleanup) @@@ TrackTitle,
+            Option(generalInfo.value("Track name/Position")).flatMap(parseTrackNumber),
+            Option(generalInfo.value("Recorded date")).flatMap(parseYear),
+            parseDurationSeconds(audioInfo.value("Duration"))
+          )
+        }
       }
     }
 
